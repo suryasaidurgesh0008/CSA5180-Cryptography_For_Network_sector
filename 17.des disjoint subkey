@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include <stdint.h>
+
+// Function to perform a circular left shift on a 28-bit value
+uint32_t circular_left_shift(uint32_t value, int shift) {
+    return ((value << shift) | (value >> (28 - shift))) & 0x0FFFFFFF;
+}
+
+// Function to generate subkeys from the initial key
+void generate_subkeys(uint64_t key, uint64_t subkeys[16]) {
+    // Permutation Choice 1 (PC-1)
+    uint32_t pc1_left_mask = 0x0FFFFFFF;
+    uint32_t pc1_right_mask = 0x0FFFFFFF00000000;
+    
+    uint32_t left_half = (uint32_t)(key >> 28);
+    uint32_t right_half = (uint32_t)(key & 0x0FFFFFFF);
+    
+    for (int round = 0; round < 16; round++) {
+        if (round == 0 || round == 1 || round == 8 || round == 15) {
+            left_half = circular_left_shift(left_half, 1);
+            right_half = circular_left_shift(right_half, 1);
+        } else {
+            left_half = circular_left_shift(left_half, 2);
+            right_half = circular_left_shift(right_half, 2);
+        }
+        
+        uint64_t combined = ((uint64_t)left_half << 28) | right_half;
+        subkeys[round] = (combined & pc1_left_mask) | ((combined & pc1_right_mask) >> 28);
+    }
+}
+
+int main() {
+    uint64_t initial_key = 0x133457799BBCDFF1;  // Example initial key
+    uint64_t subkeys[16];
+    
+    generate_subkeys(initial_key, subkeys);
+    
+    printf("Subkeys:\n");
+    for (int i = 0; i < 16; i++) {
+        printf("%d: 0x%012llX\n", i + 1, subkeys[i]);
+    }
+    
+    return 0;
+}
